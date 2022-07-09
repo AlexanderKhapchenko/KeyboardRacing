@@ -1,18 +1,8 @@
 import { Server } from 'socket.io';
-import { Users } from '../services/users';
-import * as config from './config';
-
-const users = new Users();
+import users from './user';
+import rooms from './room';
 
 export default (io: Server) => {
-	io.on('connection', socket => {
-		const username = socket.handshake.query.username;
-		
-		if (users.getOne({name: username})) {
-			socket.emit('USER_EXIST', `Username ${username} already used`);
-		}
-		else {
-			users.create({name: username});
-		}
-	});
+	users(io.of('/users'));
+	rooms(io.of('/rooms'));
 };

@@ -1,14 +1,7 @@
-import {showInputModal, showMessageModal} from "./views/modal.mjs"
+import { rooms } from "./socket/rooms.mjs"
+import { users } from "./socket/users.mjs"
 
-const username = sessionStorage.getItem('username');
+const baseUrl = "http://localhost:3002"
 
-if (!username) {
-	window.location.replace('/login');
-}
-
-const socket = io('', { query: { username } });
-
-socket.on('USER_EXIST', (message) => {
-	showMessageModal({message, onClose: () => {window.location.replace('/login')}});
-	sessionStorage.removeItem('username');
-});
+users(`${baseUrl}/users`);
+rooms(`${baseUrl}/rooms`);
