@@ -1,5 +1,5 @@
-import { IBase } from "./base";
-
-export interface IUser extends IBase  {
+export interface IUser {
 	id: string;
+	name: string;
+	activeRoom?: string;
 }

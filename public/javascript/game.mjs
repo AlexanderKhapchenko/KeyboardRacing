@@ -1,7 +1,12 @@
 import { rooms } from "./socket/rooms.mjs"
-import { users } from "./socket/users.mjs"
 
-const baseUrl = "http://localhost:3002"
+const url = "http://localhost:3002"
+const username = sessionStorage.getItem('username');
 
-users(`${baseUrl}/users`);
-rooms(`${baseUrl}/rooms`);
+if (!username) {
+	window.location.replace('/login');
+}
+
+const socket = io(url, { query: { username } });
+
+rooms(socket);

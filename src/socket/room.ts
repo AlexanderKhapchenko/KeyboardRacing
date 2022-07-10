@@ -1,39 +1,28 @@
-import { Rooms } from "../repositories/rooms";
-import { Namespace } from 'socket.io';
+import { Server, Socket} from 'socket.io';
 import * as config from "./config";
+import { Users } from '../repositories/users';
 
-const rooms = new Rooms();
-
-export default (io: Namespace) => {
-	io.on("connection", socket => {
-		socket.on("CREATE_ROOM", (roomName: string) => {
-			if (rooms.getOne({name: roomName})) {
+export default (io: Server, socket: Socket) => {
+		
+		socket.on("CREATE_ROOM", ({roomName}) => {
+			if(io.sockets.adapter.rooms.get(roomName)) {
 				socket.emit('ROOM_EXISTS', `Room name ${roomName} already used`);
 			}
 			else {
-				rooms.create({name: roomName as string, users: [socket.id]});
-				socket.emit("CREATE_ROOM", {roomName});
-				socket.broadcast.emit("CREATE_ROOM", {numberOfUsers: 1, roomName});
-				socket.emit("JOIN_ROOM_DONE", roomName);
+				socket.join(roomName);
+				socket.emit("UPDATE_ROOMS", {numberOfUsers: 0, roomName});
+				const numberOfUsers = io.sockets.adapter.rooms.get(roomName)!.size;
+				socket.broadcast.emit("UPDATE_ROOMS", {numberOfUsers, roomName});
 			}
 		});
 
-		socket.on("JOIN_ROOM", (roomName: string) => {
-			const room = rooms.getOne({name: roomName});
-			if(room && room.users.length <= config.MAXIMUM_USERS_FOR_ONE_ROOM) {
-				rooms.addUser(room.name, socket.id);
-
-				socket.emit("JOIN_ROOM_DONE", roomName);
-				socket.emit("UPDATE_ROOM_USERS_NUMBER", roomName, room.users.length + 1);
-				socket.broadcast.emit("UPDATE_ROOM_USERS_NUMBER", roomName, room.users.length + 1);
-			}
+		socket.on("TRY_JOIN_ROOM", ({roomName, username}) => {
+			socket.join(roomName);
+			console.log(Users.getAll())
+			const existUsers = Users.getAll().filter(user => user.activeRoom == roomName);
+			Users.update({name: username, updateFields: {activeRoom: roomName}});
+			const newUser = Users.getOne({name: username });
+			socket.emit("JOIN_ROOM_DONE", {roomName, existUsers, newUser});
+			socket.in(roomName).emit("JOIN_ROOM_DONE", {roomName, newUser})
 		});
-
-		socket.on("disconnect", () => {
-			const room = rooms.findRoomWithUser(socket.id);
-			if (room && room.name) {
-				rooms.removeUser(room.name, socket.id);
-			}
-		});
-	});
 }
