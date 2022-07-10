@@ -1,13 +1,29 @@
 import {showInputModal, showMessageModal} from "../views/modal.mjs"
-import { appendRoomElement, updateNumberOfUsersInRoom } from "../views/room.mjs";
-import { appendUserElement } from "../views/user.mjs";
+import { appendRoomElement, removeRoomElement, updateNumberOfUsersInRoom } from "../views/room.mjs";
+import { appendUserElement, changeReadyStatus } from "../views/user.mjs";
 
 export const rooms = (socket) => {
 	const username = sessionStorage.getItem('username');
-
+	let ready = false;
 	const addRoomBtn = document.getElementById('add-room-btn');
 	const roomsPage = document.getElementById('rooms-page');
 	const gamePage = document.getElementById('game-page');
+	const readyBtn = document.getElementById('ready-btn');
+	const quitRoomBtn = document.getElementById('quit-room-btn');
+
+	quitRoomBtn.onclick = () => {
+		roomsPage.classList.remove('display-none');
+		gamePage.classList.add('display-none');
+		socket.emit("EXIT_ROOM", ({
+			username
+		}));
+	}
+
+	readyBtn.onclick = () => {
+		ready = !ready;
+		changeReadyStatus({username, ready});
+		socket.emit("UPDATE_USER", ({ready}));
+	}
 
 	socket.on('USER_EXIST', (message) => {
 		showMessageModal({message, onClose: () => {window.location.replace('/login')}});
@@ -69,8 +85,26 @@ export const rooms = (socket) => {
 			isCurrentUser: socket.id === newUser.id,
 		});
 	});
+
+	socket.on("UPDATE_USER_IN_ROOM", ({user}) => {
+		changeReadyStatus({username: user.name, ready: user.ready});
+	});
+
+	socket.on("DELETE_ROOM", ({roomName}) => {
+		removeRoomElement(roomName);
+	});
 	
 
-
+	socket.on("GET_EXISTS_ROOM", ({rooms}) => {
+		rooms.forEach(room => {
+			appendRoomElement({
+				name: room.name,
+				numberOfUsers: room.numberOfUsers,
+				onJoin: () => {
+					joinToRoom({roomName: room.name, username});
+				}
+			})
+		})
+	})
 }
 

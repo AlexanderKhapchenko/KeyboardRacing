@@ -16,12 +16,13 @@ export class Users {
 		this.list.push(item);
   }
 
-	static update({name, updateFields}) {
+	static update({name, updateFields}:{name: string, updateFields: Partial<IUser>}) {
 		const index = this.list.findIndex(item => item.name === name);
 		this.list[index] = {
 			...this.list[index],
 			...updateFields
 		}
+		return this.list[index];
 	}
 
 	static getAll() {
@@ -33,4 +34,3 @@ export class Users {
 		this.list.splice(index, 1);
 	}
 };
-
