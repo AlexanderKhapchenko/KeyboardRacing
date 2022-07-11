@@ -26,6 +26,7 @@ export const rooms = (socket) => {
 	}
 
 	socket.on('USER_EXIST', (message) => {
+		roomsPage.classList.add("display-none");
 		showMessageModal({message, onClose: () => {window.location.replace('/login')}});
 		sessionStorage.removeItem('username');
 	});
