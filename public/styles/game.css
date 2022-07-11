@@ -72,3 +72,11 @@
 .finished {
   background-color:greenyellow !important;
 }
+
+.cursor {
+  border-bottom: 1px solid var(--game-input-wait-border-color);
+}
+
+.done {
+  background: var(--game-input-correct-background);
+}

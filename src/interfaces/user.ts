@@ -3,4 +3,5 @@ export interface IUser {
 	name: string;
 	activeRoom?: string;
 	ready: boolean;
+	progress: number;
 }
