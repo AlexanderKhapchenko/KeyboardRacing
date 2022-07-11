@@ -30,3 +30,29 @@ export const resetGamePage = () => {
 	removeUserElements();
 }
 
+export const changeRoomName = (name) => {
+	const roomName = document.getElementById('room-name');
+	roomName.innerText = name;
+}
+
+export const readyToGame = ({sec}) => {
+	const readyBtn = document.getElementById('ready-btn');
+	const timer = document.getElementById('timer');
+
+	readyBtn.classList.add('display-none');
+	timer.classList.remove('display-none');
+	timer.innerText = sec;
+}
+
+export const updateGameTimer = ({sec}) => {
+	const timer = document.getElementById('timer');
+	const textContainer = document.getElementById('text-container');
+	const gameTimer = document.getElementById('game-timer');
+	const gameTimerSeconds = document.getElementById('game-timer-seconds');
+
+	timer.classList.add('display-none');
+	textContainer.classList.remove('display-none');
+	gameTimer.classList.remove('display-none');
+
+	gameTimerSeconds.innerText = sec;
+}
