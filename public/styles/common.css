@@ -47,6 +47,8 @@ input::placeholder {
   --input-border-color: #999;
   --input-placeholder-color: #888;
   --white: #fff;
+	--game-input-correct-background: #0f0;
+	--game-input-wait-border-color: #f00;
 }
 
 .title {
