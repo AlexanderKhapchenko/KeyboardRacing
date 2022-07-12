@@ -26,6 +26,8 @@ export const resetGamePage = () => {
 	const timer = document.getElementById('timer');
 	const textContainer = document.getElementById('text-container');
 	const gameTimer = document.getElementById('game-timer');
+	const quitRoomBtn = document.getElementById('quit-room-btn');
+
 
 	readyBtn.innerText = readyBtnState.READY;
 
@@ -33,6 +35,7 @@ export const resetGamePage = () => {
 	textContainer.classList.add('display-none');
 	timer.classList.add('display-none');
 	readyBtn.classList.remove('display-none');
+	quitRoomBtn.classList.remove('display-none');
 
 	removeUserElements();
 }
@@ -45,9 +48,13 @@ export const changeRoomName = (name) => {
 export const readyToGame = ({sec}) => {
 	const readyBtn = document.getElementById('ready-btn');
 	const timer = document.getElementById('timer');
+	const quitRoomBtn = document.getElementById('quit-room-btn');
+
 
 	readyBtn.classList.add('display-none');
 	timer.classList.remove('display-none');
+	quitRoomBtn.classList.add('display-none');
+
 	timer.innerText = sec;
 }
 
