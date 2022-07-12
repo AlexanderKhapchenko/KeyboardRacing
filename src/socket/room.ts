@@ -148,7 +148,7 @@ export default (io: Server, socket: Socket) => {
 		socket.emit("SHOW_RESULTS", {gameResults});
 	}
 
-	const exitRoom = ({username, isDisconnect = false}) => {
+	const exitRoom = ({username}) => {
 		const user = Users.getOne({name: username});
 		const roomName = user && user.activeRoom;
 		Users.reset({name: username});
@@ -165,10 +165,15 @@ export default (io: Server, socket: Socket) => {
 			const numberOfUsers = room.getNumberOfUsers(roomName);
 			const isFullRoom = room.isRoomFull(roomName);
 
-			if(numberOfUsers > 0) {
+			if(numberOfUsers > 0 && !room.isRoomInGame(roomName)) {
 				checkReadyToGame({activeRoom: roomName});
+			}
+
+			if(room.isRoomInGame(roomName)) {
 				checkGameOver({activeRoom: roomName});
 			}
+				
+		
 
 			socket.broadcast.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers: numberOfUsers, isFullRoom});
 			socket.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers: numberOfUsers, isFullRoom});
@@ -189,7 +194,7 @@ export default (io: Server, socket: Socket) => {
 		const user = Users.getOne({id: socket.id});
 
 		if(user && 'activeRoom' in user) {
-			exitRoom({username: user.name, isDisconnect: true});
+			exitRoom({username: user.name});
 		}
 	});
 }

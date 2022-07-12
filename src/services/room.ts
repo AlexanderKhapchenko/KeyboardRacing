@@ -81,21 +81,25 @@ export class Room {
 	}
 
 	stopIntervalOnGameOver(intervalIdGame: NodeJS.Timer, roomName: string) {
+		console.log("stopIntervalOnGameOver", intervalIdGame);
 		const room = Room.roomsInGame.get(roomName);
 		Room.roomsInGame.set(roomName, {...room, intervalIdGame});
 	}
 
 	stopTimerOnGameOver(timerIdGame: NodeJS.Timer, roomName: string) {
+		console.log("stopTimerOnGameOver", timerIdGame);
 		const room = Room.roomsInGame.get(roomName);
 		Room.roomsInGame.set(roomName, {...room, timerIdGame});
 	}
 
 	stopIntervalOnGameStart(intervalIdReady: NodeJS.Timer, roomName: string) {
+		console.log("stopIntervalOnGameStart", intervalIdReady);
 		const room = Room.roomsInGame.get(roomName);
 		Room.roomsInGame.set(roomName, {...room, intervalIdReady});
 	}
 
 	stopTimerOnGameStart(timerIdReady: NodeJS.Timer, roomName: string) {
+		console.log("stopTimerOnGameStart", timerIdReady);
 		const room = Room.roomsInGame.get(roomName);
 		Room.roomsInGame.set(roomName, {...room, timerIdReady});
 	}
