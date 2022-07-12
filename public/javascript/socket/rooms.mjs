@@ -80,21 +80,21 @@ export const rooms = (socket) => {
 		}
 	});
 
-	socket.on("JOIN_ROOM_DONE", ({roomName, existUsers, newUser}) => {
+	socket.on("JOIN_ROOM_DONE", ({roomName, existUsers, newUser, ready}) => {
 		showGamePage();
 		changeRoomName(roomName);
 
 		if(existUsers) {
 			existUsers.forEach(user => appendUserElement({
 					username: user.name,
-					ready: false,
+					ready: user.ready,
 					isCurrentUser: socket.id === user.id,
 				}));
 		}
 
 		appendUserElement({
 			username: newUser.name,
-			ready: false,
+			ready,
 			isCurrentUser: socket.id === newUser.id,
 		});
 	});

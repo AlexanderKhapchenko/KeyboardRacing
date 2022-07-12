@@ -5,8 +5,10 @@ export class Room {
 
 	io: Server;
 	static roomsInGame: string[] = [];
-	intervalId?: NodeJS.Timer;
-	timerId?: NodeJS.Timer;
+	intervalIdGame?: NodeJS.Timer;
+	timerIdGame?: NodeJS.Timer;
+	intervalIdReady?: NodeJS.Timer;
+	timerIdReady?: NodeJS.Timer;
 
 	constructor(io: Server) {
 		this.io = io;
@@ -49,8 +51,8 @@ export class Room {
 	gameOver(roomName: string) {
 		const index = Room.roomsInGame.indexOf(roomName);
 		Room.roomsInGame.splice(index, 1);
-		this.intervalId && clearInterval(this.intervalId);
-		this.timerId && clearTimeout(this.timerId);
+		this.intervalIdGame && clearInterval(this.intervalIdGame);
+		this.timerIdGame && clearTimeout(this.timerIdGame);
 	}
 
 	isRoomInGame(roomName: string):boolean {
@@ -64,11 +66,29 @@ export class Room {
 		return this.getNumberOfUsers(roomName) >= config.MAXIMUM_USERS_FOR_ONE_ROOM;
 	}
 
+	startGame() {
+		this.intervalIdReady && clearInterval(this.intervalIdReady);
+		this.timerIdReady && clearTimeout(this.timerIdReady);
+	}
+
 	stopIntervalOnGameOver(intervalId: NodeJS.Timer) {
-		this.intervalId = intervalId;
+		this.intervalIdGame = intervalId;
 	}
 
 	stopTimerOnGameOver(timerId: NodeJS.Timer) {
-		this.timerId = timerId;
+		this.timerIdGame = timerId;
+	}
+
+	stopIntervalOnGameStart(intervalIdReady: NodeJS.Timer) {
+		this.intervalIdReady = intervalIdReady;
+	}
+
+	stopTimerOnGameStart(timerIdReady: NodeJS.Timer) {
+		this.timerIdReady = timerIdReady;
+	}
+
+	roomDelete(roomName: string) {
+		this.startGame();
+		this.gameOver(roomName);
 	}
 }
