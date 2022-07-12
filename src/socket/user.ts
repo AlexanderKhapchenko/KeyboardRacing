@@ -1,4 +1,4 @@
-import { Users } from "../repositories/users";
+import { Users } from "../services/users";
 import { Socket } from 'socket.io';
 
 export default (socket: Socket) => {
@@ -13,6 +13,8 @@ export default (socket: Socket) => {
 
 	socket.on("disconnect", () => {
 		const user = Users.getOne({id: socket.id});
-		Users.remove(user!.name);
+		if(user && user.name) {
+			Users.remove(user!.name);
+		}
 	});
 }

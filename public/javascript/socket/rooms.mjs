@@ -1,19 +1,31 @@
-import { showGamePage, showRoomPage, resetGamePage } from "../views/game.mjs";
+import { showGamePage, showRoomPage, resetGamePage, readyToGame, updateGameTimer, changeRoomName, createSpanElements, changeTextContainer, readyBtnState } from "../views/game.mjs";
 import {showInputModal, showMessageModal, showResultsModal} from "../views/modal.mjs"
-import { appendRoomElement, removeRoomElement, updateNumberOfUsersInRoom } from "../views/room.mjs";
+import { appendRoomElement, hideRoomElement, removeRoomElement, showRoomElement, updateNumberOfUsersInRoom } from "../views/room.mjs";
 import { appendUserElement, changeReadyStatus, removeUserElement, setProgress } from "../views/user.mjs";
 
 export const rooms = (socket) => {
 	const username = sessionStorage.getItem('username');
-	let ready = false;
 	const addRoomBtn = document.getElementById('add-room-btn');
 	const readyBtn = document.getElementById('ready-btn');
 	const quitRoomBtn = document.getElementById('quit-room-btn');
-	const timer = document.getElementById('timer');
-	const textContainer = document.getElementById('text-container');
-	const gameTimer = document.getElementById('game-timer');
-	const gameTimerSeconds = document.getElementById('game-timer-seconds');
+
 	let globalKeydown;
+
+	addRoomBtn && (addRoomBtn.onclick = () => {
+		let roomName = '';
+		
+		showInputModal({
+			title: 'Enter room name', 
+			onSubmit: () => {
+				socket.emit("CREATE_ROOM", {roomName, username});
+			},
+			onChange: (input) => {
+				if(input.trim().length) {
+					roomName = input;
+				}
+			}
+		})
+	})
 
 	quitRoomBtn.onclick = () => {
 		showRoomPage();
@@ -24,11 +36,13 @@ export const rooms = (socket) => {
 		}));
 	}
 
-	readyBtn.onclick = () => {
+	readyBtn && (readyBtn.onclick = () => {
+		let ready = readyBtn.innerText != readyBtnState.READY;
 		ready = !ready;
+		readyBtn.innerText = ready ? readyBtnState.NOT_READY : readyBtnState.READY;
 		changeReadyStatus({username, ready});
 		socket.emit("UPDATE_USER", ({ready}));
-	}
+	});
 
 	socket.on('USER_EXIST', (message) => {
 		const roomsPage = document.getElementById('rooms-page');
@@ -40,23 +54,6 @@ export const rooms = (socket) => {
 	socket.on("REMOVE_USER_ELEMENT", ({username}) => {
 		removeUserElement(username);
 	});
-
-	addRoomBtn.onclick = () => {
-		let roomName = '';
-		
-		showInputModal({
-			title: 'Enter room name', 
-			onSubmit: () => {
-				socket.emit("CREATE_ROOM", {roomName});
-				joinToRoom({roomName, username});
-			},
-			onChange: (input) => {
-				if(input.trim().length) {
-					roomName = input;
-				}
-			}
-		})
-	}
 
 	socket.on('ROOM_EXISTS', (message) => {
 		showMessageModal({message});
@@ -73,12 +70,19 @@ export const rooms = (socket) => {
 		}});
 	});
 
-	socket.on("UPDATE_ROOM_LIST", ({roomName, numberOfUsers}) => {
+	socket.on("UPDATE_ROOM_LIST", ({roomName, numberOfUsers, isFullRoom}) => {
 		updateNumberOfUsersInRoom({name: roomName, numberOfUsers});
+
+		if (isFullRoom) {
+			hideRoomElement(roomName);
+		} else {
+			showRoomElement(roomName);
+		}
 	});
 
 	socket.on("JOIN_ROOM_DONE", ({roomName, existUsers, newUser}) => {
 		showGamePage();
+		changeRoomName(roomName);
 
 		if(existUsers) {
 			existUsers.forEach(user => appendUserElement({
@@ -115,32 +119,16 @@ export const rooms = (socket) => {
 				}
 			})
 		})
-	})
-
-	socket.on("READY_TO_GAME", ({sec}) => {
-		readyBtn.classList.add('display-none');
-		timer.classList.remove('display-none');
-		timer.innerText = sec;
 	});
 
-	socket.on("UPDATE_GAME_TIMER", ({sec}) => {
-		timer.classList.add('display-none');
-		textContainer.classList.remove('display-none');
-		gameTimer.classList.remove('display-none');
+	socket.on("READY_TO_GAME", readyToGame);
 
-		gameTimerSeconds.innerText = sec;
-	});
+	socket.on("UPDATE_GAME_TIMER", updateGameTimer);
 
 	socket.on("START_GAME", ({text}) => {
 
-		const characters = text.split("").map((char) => {
-	    const span = document.createElement("span");
-	    span.innerText = char;
-	    return span;
-	  });
-
-		textContainer.innerText = '';
-		textContainer.append(...characters);
+		const characters = createSpanElements(text);
+		changeTextContainer(characters);
 
 		let cursorIndex = 0;
 		let cursorCharacter = characters[cursorIndex];

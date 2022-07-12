@@ -1,46 +1,50 @@
 import { Server, Socket} from 'socket.io';
 import * as config from "./config";
-import { Users } from '../repositories/users';
+import { Users } from '../services/users';
 import { IUser } from '../interfaces/user';
 import { texts } from '../data';
-import user from './user';
+import { Room } from '../services/room';
 
 export default (io: Server, socket: Socket) => {
-	const arr = Array.from(io.sockets.adapter.rooms);
-	const filtered = arr.filter(room => !room[1].has(room[0]))
-	const roomNames = filtered.map(i => i[0]);
+	const room = new Room(io);
 
-	const res = roomNames.map(roomName => {
-		return {
-			name: roomName,
-			numberOfUsers: io.sockets.adapter.rooms.get(roomName)!.size,
-		}
-	}).filter(room => room.numberOfUsers < 5);
+	const rooms = room.getAllRoom();
 
-	socket.emit("GET_EXISTS_ROOM", {rooms: res});
+	socket.emit("GET_EXISTS_ROOM", {rooms: rooms});
 
-	socket.on("CREATE_ROOM", ({roomName}) => {
-		if(io.sockets.adapter.rooms.get(roomName)) {
+	socket.on("CREATE_ROOM", ({roomName, username}) => {
+		if(room.isRoomExist(roomName)) {
 			socket.emit('ROOM_EXISTS', `Room name ${roomName} already used`);
 		}
 		else {
 			socket.join(roomName);
 			socket.emit("UPDATE_ROOMS", {numberOfUsers: 1, roomName});
-			const numberOfUsers = io.sockets.adapter.rooms.get(roomName)!.size;
+			const numberOfUsers = room.getNumberOfUsers(roomName);
 			socket.broadcast.emit("UPDATE_ROOMS", {numberOfUsers, roomName});
+			tryJoinRoom({roomName, username});
 		}
 	});
 
-	socket.on("TRY_JOIN_ROOM", ({roomName, username}) => {
+	const tryJoinRoom = ({roomName, username}) => {
 		socket.join(roomName);
 		
 		const existUsers = Users.getAll().filter(user => user.activeRoom == roomName);
 		const newUser = Users.update({name: username, updateFields: {activeRoom: roomName}});
 		
-		socket.broadcast.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers: io.sockets.adapter.rooms.get(roomName)!.size});
+		const numberOfUsers = room.getNumberOfUsers(roomName);
+		const isFullRoom = room.isRoomFull(roomName);
+
+		if (!room.isRoomInGame(roomName)) {
+			socket.broadcast.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers, isFullRoom});
+			socket.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers, isFullRoom});
+		}
+
 		socket.emit("JOIN_ROOM_DONE", {roomName, existUsers, newUser});
-		socket.in(roomName).emit("JOIN_ROOM_DONE", {roomName, newUser})
-	});
+		socket.in(roomName).emit("JOIN_ROOM_DONE", {roomName, newUser});
+		
+	}
+
+	socket.on("TRY_JOIN_ROOM", tryJoinRoom);
 
 	socket.on("UPDATE_USER", (updateFields: Partial<IUser>) => {
 		const user = Users.getOne({id: socket.id});
@@ -60,26 +64,34 @@ export default (io: Server, socket: Socket) => {
 				const usersInCurrentRoom = Users.getAll().filter(user => user.activeRoom == activeRoom);
 
 				if (usersInCurrentRoom.every(user => user.ready === true)) {
-					let sec = 3;
-					const interval = () => {
-						socket.to(activeRoom).emit("READY_TO_GAME", {sec});
-						socket.emit("READY_TO_GAME", {sec});
-						sec--;
-					}
-					interval();
-					const intervalId = setInterval(interval, 1000);
-
-					setTimeout(() => {
-						clearInterval(intervalId);
-						startGame({activeRoom});
-						
-					}, 4000);
+					readyToGame({activeRoom});
 				}
 			}
 		}
 	});
 
+	const readyToGame = ({activeRoom}) => {
+		room.gameInProgress(activeRoom);
+		socket.broadcast.emit("DELETE_ROOM", {roomName: activeRoom});
+
+		let sec = config.SECONDS_TIMER_BEFORE_START_GAME;
+		const interval = () => {
+			socket.to(activeRoom).emit("READY_TO_GAME", {sec});
+			socket.emit("READY_TO_GAME", {sec});
+			sec--;
+		}
+		interval();
+		const intervalId = setInterval(interval, 1000);
+
+		setTimeout(() => {
+			clearInterval(intervalId);
+			startGame({activeRoom});
+			
+		}, config.SECONDS_TIMER_BEFORE_START_GAME * 1000);
+	}
+
 	const startGame = ({activeRoom}) => {
+		
 		let sec = config.SECONDS_FOR_GAME;
 		const randomText = texts[Math.floor(Math.random() * texts.length)];
 
@@ -93,17 +105,21 @@ export default (io: Server, socket: Socket) => {
 			socket.emit("UPDATE_GAME_TIMER", {sec});
 			
 			if(usersInCurrentRoom.some(user => user.progress === 100)){
-					endGame({activeRoom});
+				endGame({activeRoom});
 			}
 
 			sec--;
 		}
 		interval();
+
 		const intervalId = setInterval(interval, 1000);
-		setTimeout(() => {
+		room.stopIntervalOnGameOver(intervalId);
+
+		const timerId = setTimeout(() => {
 			clearInterval(intervalId);
 			endGame({activeRoom});
 		}, config.SECONDS_FOR_GAME * 1000);
+		room.stopTimerOnGameOver(timerId)
 	}
 
 	const endGame = ({activeRoom}) => {
@@ -118,27 +134,36 @@ export default (io: Server, socket: Socket) => {
 
 		socket.to(activeRoom).emit("SHOW_RESULTS", {gameResults});
 		socket.emit("SHOW_RESULTS", {gameResults});
+
+		room.gameOver(activeRoom);
 	}
 
+	const exitRoom = ({username, isDisconnect = false}) => {
+		const user = Users.getOne({name: username});
+		const roomName = user && user?.activeRoom;
+		Users.reset({name: username});
 
-	const exitRoom = ({username}) => {
-		const roomName = Users.getOne({name: username})!.activeRoom as string;
+		if (roomName) {
+			Users.update({name: username, updateFields: {
+				ready: false,
+				activeRoom: undefined
+			}});
 
-		Users.update({name: username, updateFields: {
-			ready: false,
-			activeRoom: undefined
-		}});
+			socket.to(roomName).emit("REMOVE_USER_ELEMENT", {username});
+			socket.leave(roomName);
 
-		socket.to(roomName).emit("REMOVE_USER_ELEMENT", {username});
+			const numberOfUsers = room.getNumberOfUsers(roomName);
+			const isFullRoom = room.isRoomFull(roomName);
 
-		socket.broadcast.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers: io.sockets.adapter.rooms.get(roomName)!.size - 1});
-		socket.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers: io.sockets.adapter.rooms.get(roomName)!.size - 1});
+			socket.broadcast.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers: numberOfUsers, isFullRoom});
+			socket.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers: numberOfUsers, isFullRoom});
 
-		socket.leave(roomName);
+			socket.leave(roomName);
 
-		if(!io.sockets.adapter.rooms.get(roomName)) {
-			socket.emit("DELETE_ROOM", {roomName});
-			socket.broadcast.emit("DELETE_ROOM", {roomName});
+			if(!room.isRoomExist(roomName)) {
+				socket.emit("DELETE_ROOM", {roomName});
+				socket.broadcast.emit("DELETE_ROOM", {roomName});
+			}
 		}
 	}
 
@@ -147,8 +172,9 @@ export default (io: Server, socket: Socket) => {
 
 	socket.on("disconnect", () => {
 		const user = Users.getOne({id: socket.id});
+
 		if(user && 'activeRoom' in user) {
-			exitRoom({username: user.name});
+			exitRoom({username: user.name, isDisconnect: true});
 		}
 	});
 }
