@@ -4,7 +4,6 @@ import { Users } from '../services/users';
 import { IUser } from '../interfaces/user';
 import { texts } from '../data';
 import { Room } from '../services/room';
-import user from './user';
 
 export default (io: Server, socket: Socket) => {
 	const room = new Room(io);
@@ -58,7 +57,8 @@ export default (io: Server, socket: Socket) => {
 			}
 
 			if('progress' in updateFields && activeRoom) {
-				updateFields.progress === 100 && endGame({activeRoom});
+				updateFields.progress == 100 && room.addResult(name, activeRoom);
+				checkGameOver({activeRoom});
 			}
 
 			if('ready' in updateFields && activeRoom) {
@@ -66,6 +66,16 @@ export default (io: Server, socket: Socket) => {
 			}
 		}
 	});
+
+	const checkGameOver = ({activeRoom}) => {
+		if(room.isRoomInGame(activeRoom)) {
+			Users
+			.getAll()
+			.filter(user => user.activeRoom === activeRoom)
+			.every(user => user.progress === 100)
+			&& endGame({activeRoom});
+		}
+	}
 
 	const checkReadyToGame = ({activeRoom}) => {
 		const usersInCurrentRoom = Users.getAll();
@@ -96,12 +106,12 @@ export default (io: Server, socket: Socket) => {
 			
 		}, config.SECONDS_TIMER_BEFORE_START_GAME * 1000);
 
-		room.stopIntervalOnGameStart(intervalId);
-		room.stopTimerOnGameStart(timerId);
+		room.stopIntervalOnGameStart(intervalId, activeRoom);
+		room.stopTimerOnGameStart(timerId, activeRoom);
 	}
 
 	const startGame = ({activeRoom}) => {
-		room.startGame();
+		room.startGame(activeRoom);
 		let sec = config.SECONDS_FOR_GAME;
 		const randomText = texts[Math.floor(Math.random() * texts.length)];
 
@@ -114,7 +124,7 @@ export default (io: Server, socket: Socket) => {
 			socket.to(activeRoom).emit("UPDATE_GAME_TIMER", {sec});
 			socket.emit("UPDATE_GAME_TIMER", {sec});
 			
-			if(usersInCurrentRoom.some(user => user.progress === 100)){
+			if(usersInCurrentRoom.every(user => user.progress === 100)){
 				endGame({activeRoom});
 			}
 
@@ -123,27 +133,17 @@ export default (io: Server, socket: Socket) => {
 		interval();
 
 		const intervalId = setInterval(interval, 1000);
-		room.stopIntervalOnGameOver(intervalId);
+		room.stopIntervalOnGameOver(intervalId, activeRoom);
 
 		const timerId = setTimeout(() => {
-			clearInterval(intervalId);
 			endGame({activeRoom});
 		}, config.SECONDS_FOR_GAME * 1000);
-		room.stopTimerOnGameOver(timerId)
+		room.stopTimerOnGameOver(timerId, activeRoom)
 	}
 
 	const endGame = ({activeRoom}) => {
-		const usersInCurrentRoom = Users.getAll().filter(user => user.activeRoom == activeRoom);
-		const sortedUser = usersInCurrentRoom.sort((a, b) => a.progress < b.progress ? 1 : -1);
-
-		let gameResults: string[] = [];
-
-		sortedUser.forEach(user => {
-			gameResults.push(user.name);
-		});
-
+		const gameResults = room.getResult(activeRoom);
 		room.gameOver(activeRoom);
-
 		socket.to(activeRoom).emit("SHOW_RESULTS", {gameResults});
 		socket.emit("SHOW_RESULTS", {gameResults});
 	}
@@ -167,6 +167,7 @@ export default (io: Server, socket: Socket) => {
 
 			if(numberOfUsers > 0) {
 				checkReadyToGame({activeRoom: roomName});
+				checkGameOver({activeRoom: roomName});
 			}
 
 			socket.broadcast.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers: numberOfUsers, isFullRoom});
@@ -181,7 +182,6 @@ export default (io: Server, socket: Socket) => {
 			}
 		}
 	}
-
 
 	socket.on("EXIT_ROOM", exitRoom);
 
