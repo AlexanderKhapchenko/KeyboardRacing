@@ -1,5 +1,6 @@
 import * as config from "../socket/config";
 import { Server } from 'socket.io';
+import { clearInterval, clearTimeout } from 'timers';
 
 interface roomsInGameKey {
 	intervalIdGame?: NodeJS.Timer;
