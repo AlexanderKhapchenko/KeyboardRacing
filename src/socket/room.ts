@@ -136,8 +136,10 @@ export default (io: Server, socket: Socket) => {
 		room.stopIntervalOnGameOver(intervalId, activeRoom);
 
 		const timerId = setTimeout(() => {
+			clearInterval(intervalId);
 			endGame({activeRoom});
 		}, config.SECONDS_FOR_GAME * 1000);
+
 		room.stopTimerOnGameOver(timerId, activeRoom)
 	}
 
@@ -172,13 +174,9 @@ export default (io: Server, socket: Socket) => {
 			if(room.isRoomInGame(roomName)) {
 				checkGameOver({activeRoom: roomName});
 			}
-				
-		
 
 			socket.broadcast.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers: numberOfUsers, isFullRoom});
 			socket.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers: numberOfUsers, isFullRoom});
-
-			socket.leave(roomName);
 
 			if(!room.isRoomExist(roomName)) {
 				socket.emit("DELETE_ROOM", {roomName});
