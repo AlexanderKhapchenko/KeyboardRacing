@@ -33,4 +33,12 @@ export class Users {
 		const index = this.list.findIndex(item => item.name === name);
 		this.list.splice(index, 1);
 	}
+
+	static reset({name}) {
+		Users.update({name, updateFields: {
+			activeRoom: undefined,
+			ready: false,
+			progress: 0
+		}})
+	}
 };

@@ -4,7 +4,9 @@ import { Server } from 'socket.io';
 export class Room {
 
 	io: Server;
-	roomsInGame: string[] = [];
+	static roomsInGame: string[] = [];
+	intervalId?: NodeJS.Timer;
+	timerId?: NodeJS.Timer;
 
 	constructor(io: Server) {
 		this.io = io;
@@ -41,16 +43,18 @@ export class Room {
 	}
 
 	gameInProgress(roomName: string) {
-		this.roomsInGame.push(roomName);
+		Room.roomsInGame.push(roomName);
 	}
 
 	gameOver(roomName: string) {
-		const index = this.roomsInGame.indexOf(roomName);
-		this.roomsInGame.splice(index, 1);
+		const index = Room.roomsInGame.indexOf(roomName);
+		Room.roomsInGame.splice(index, 1);
+		this.intervalId && clearInterval(this.intervalId);
+		this.timerId && clearTimeout(this.timerId);
 	}
 
 	isRoomInGame(roomName: string):boolean {
-		return this.roomsInGame.includes(roomName)
+		return Room.roomsInGame.includes(roomName)
 	}
 
 	isRoomFull(roomName: string, isDisconnect = false):boolean {
@@ -58,5 +62,13 @@ export class Room {
 			return this.getNumberOfUsers(roomName) >= config.MAXIMUM_USERS_FOR_ONE_ROOM
 		}
 		return this.getNumberOfUsers(roomName) >= config.MAXIMUM_USERS_FOR_ONE_ROOM;
+	}
+
+	stopIntervalOnGameOver(intervalId: NodeJS.Timer) {
+		this.intervalId = intervalId;
+	}
+
+	stopTimerOnGameOver(timerId: NodeJS.Timer) {
+		this.timerId = timerId;
 	}
 }

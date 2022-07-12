@@ -3,7 +3,6 @@ import * as config from "./config";
 import { Users } from '../services/users';
 import { IUser } from '../interfaces/user';
 import { texts } from '../data';
-import user from './user';
 import { Room } from '../services/room';
 
 export default (io: Server, socket: Socket) => {
@@ -72,6 +71,9 @@ export default (io: Server, socket: Socket) => {
 	});
 
 	const readyToGame = ({activeRoom}) => {
+		room.gameInProgress(activeRoom);
+		socket.broadcast.emit("DELETE_ROOM", {roomName: activeRoom});
+
 		let sec = config.SECONDS_TIMER_BEFORE_START_GAME;
 		const interval = () => {
 			socket.to(activeRoom).emit("READY_TO_GAME", {sec});
@@ -89,9 +91,7 @@ export default (io: Server, socket: Socket) => {
 	}
 
 	const startGame = ({activeRoom}) => {
-		room.gameInProgress(activeRoom);
-
-		socket.emit("DELETE_ROOM", {roomName: activeRoom});
+		
 		let sec = config.SECONDS_FOR_GAME;
 		const randomText = texts[Math.floor(Math.random() * texts.length)];
 
@@ -105,17 +105,21 @@ export default (io: Server, socket: Socket) => {
 			socket.emit("UPDATE_GAME_TIMER", {sec});
 			
 			if(usersInCurrentRoom.some(user => user.progress === 100)){
-					endGame({activeRoom});
+				endGame({activeRoom});
 			}
 
 			sec--;
 		}
 		interval();
+
 		const intervalId = setInterval(interval, 1000);
-		setTimeout(() => {
+		room.stopIntervalOnGameOver(intervalId);
+
+		const timerId = setTimeout(() => {
 			clearInterval(intervalId);
 			endGame({activeRoom});
 		}, config.SECONDS_FOR_GAME * 1000);
+		room.stopTimerOnGameOver(timerId)
 	}
 
 	const endGame = ({activeRoom}) => {
@@ -137,6 +141,8 @@ export default (io: Server, socket: Socket) => {
 	const exitRoom = ({username, isDisconnect = false}) => {
 		const user = Users.getOne({name: username});
 		const roomName = user && user?.activeRoom;
+		Users.reset({name: username});
+
 		if (roomName) {
 			Users.update({name: username, updateFields: {
 				ready: false,

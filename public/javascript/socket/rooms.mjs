@@ -1,18 +1,14 @@
-import { showGamePage, showRoomPage, resetGamePage, readyToGame, updateGameTimer, changeRoomName } from "../views/game.mjs";
+import { showGamePage, showRoomPage, resetGamePage, readyToGame, updateGameTimer, changeRoomName, createSpanElements, changeTextContainer, readyBtnState } from "../views/game.mjs";
 import {showInputModal, showMessageModal, showResultsModal} from "../views/modal.mjs"
 import { appendRoomElement, hideRoomElement, removeRoomElement, showRoomElement, updateNumberOfUsersInRoom } from "../views/room.mjs";
 import { appendUserElement, changeReadyStatus, removeUserElement, setProgress } from "../views/user.mjs";
 
 export const rooms = (socket) => {
 	const username = sessionStorage.getItem('username');
-	let ready = false;
 	const addRoomBtn = document.getElementById('add-room-btn');
 	const readyBtn = document.getElementById('ready-btn');
 	const quitRoomBtn = document.getElementById('quit-room-btn');
-	const timer = document.getElementById('timer');
-	const textContainer = document.getElementById('text-container');
-	const gameTimer = document.getElementById('game-timer');
-	const gameTimerSeconds = document.getElementById('game-timer-seconds');
+
 	let globalKeydown;
 
 	addRoomBtn && (addRoomBtn.onclick = () => {
@@ -41,11 +37,12 @@ export const rooms = (socket) => {
 	}
 
 	readyBtn && (readyBtn.onclick = () => {
+		let ready = readyBtn.innerText != readyBtnState.READY;
 		ready = !ready;
-		readyBtn.innerText = ready ? 'READY' : 'NOT READY';
+		readyBtn.innerText = ready ? readyBtnState.NOT_READY : readyBtnState.READY;
 		changeReadyStatus({username, ready});
 		socket.emit("UPDATE_USER", ({ready}));
-	})
+	});
 
 	socket.on('USER_EXIST', (message) => {
 		const roomsPage = document.getElementById('rooms-page');
@@ -74,7 +71,6 @@ export const rooms = (socket) => {
 	});
 
 	socket.on("UPDATE_ROOM_LIST", ({roomName, numberOfUsers, isFullRoom}) => {
-		console.log("UPDATE_ROOM_LIST", roomName, numberOfUsers, isFullRoom);
 		updateNumberOfUsersInRoom({name: roomName, numberOfUsers});
 
 		if (isFullRoom) {
@@ -131,14 +127,8 @@ export const rooms = (socket) => {
 
 	socket.on("START_GAME", ({text}) => {
 
-		const characters = text.split("").map((char) => {
-	    const span = document.createElement("span");
-	    span.innerText = char;
-	    return span;
-	  });
-
-		textContainer.innerText = '';
-		textContainer.append(...characters);
+		const characters = createSpanElements(text);
+		changeTextContainer(characters);
 
 		let cursorIndex = 0;
 		let cursorCharacter = characters[cursorIndex];

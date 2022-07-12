@@ -1,5 +1,10 @@
 import { removeUserElements } from "./user.mjs";
 
+export const readyBtnState = {
+	READY: 'READY',
+	NOT_READY: 'NOT READY' 
+}
+
 export const showGamePage = () => {
 	const roomsPage = document.getElementById('rooms-page');
 	const gamePage = document.getElementById('game-page');
@@ -21,6 +26,8 @@ export const resetGamePage = () => {
 	const timer = document.getElementById('timer');
 	const textContainer = document.getElementById('text-container');
 	const gameTimer = document.getElementById('game-timer');
+
+	readyBtn.innerText = readyBtnState.READY;
 
 	gameTimer.classList.add('display-none');
 	textContainer.classList.add('display-none');
@@ -55,4 +62,20 @@ export const updateGameTimer = ({sec}) => {
 	gameTimer.classList.remove('display-none');
 
 	gameTimerSeconds.innerText = sec;
+}
+
+export const createSpanElements = (text) => {
+	return text.split("").map((char) => {
+		const span = document.createElement("span");
+		
+		span.innerText = char;
+		return span;
+	});
+}
+
+export const changeTextContainer = (characters) => {
+	const textContainer = document.getElementById('text-container');
+
+	textContainer.innerText = '';
+	textContainer.append(...characters);
 }
