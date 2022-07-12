@@ -54,12 +54,12 @@ export class Room {
 	}
 
 	gameOver(roomName: string) {
-		Room.roomsInGame.delete(roomName);
 		const room = Room.roomsInGame.get(roomName);
 		if (room) {
 			room.intervalIdGame && clearInterval(room.intervalIdGame);
 			room.timerIdGame && clearTimeout(room.timerIdGame);
 		}
+		Room.roomsInGame.delete(roomName);
 	}
 
 	isRoomInGame(roomName: string):boolean {
