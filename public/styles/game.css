@@ -80,3 +80,28 @@
 .done {
   background: var(--game-input-correct-background);
 }
+
+/* Commentator */
+.commentator {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
+.commentator .avatar {
+  height: 150px;
+  width: 150px;
+  margin-top: 10px;
+  align-self: flex-end;
+}
+
+.commentator #comment {
+  text-align: justify;
+  width: 100%;
+  padding: 10px 20px 20%;
+  color: var(--main-font-color);
+  background: rgb(240, 240, 240);
+  border-radius: 10px;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 75%, 75% 75%, 75% 100%, 50% 75%, 0% 75%);
+}

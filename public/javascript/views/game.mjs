@@ -21,13 +21,17 @@ export const showRoomPage = () => {
 	gamePage.classList.add('display-none');
 }
 
+export const showQuitButton = () => {
+	const quitRoomBtn = document.getElementById('quit-room-btn');
+	quitRoomBtn.classList.remove('display-none');
+}
+
 export const resetGamePage = () => {
 	const readyBtn = document.getElementById('ready-btn');
 	const timer = document.getElementById('timer');
 	const textContainer = document.getElementById('text-container');
 	const gameTimer = document.getElementById('game-timer');
 	const quitRoomBtn = document.getElementById('quit-room-btn');
-
 
 	readyBtn.innerText = readyBtnState.READY;
 
