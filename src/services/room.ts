@@ -1,12 +1,15 @@
 import * as config from "../socket/config";
 import { Server } from 'socket.io';
 import { clearInterval, clearTimeout } from 'timers';
+import room from "../socket/room";
+import {PORT} from "../config";
 
 interface roomsInGameKey {
 	intervalIdGame?: NodeJS.Timer;
 	timerIdGame?: NodeJS.Timer;
 	intervalIdReady?: NodeJS.Timer;
 	timerIdReady?: NodeJS.Timer;
+	secondsInGame?: number;
 }
 
 export class Room {
@@ -29,7 +32,7 @@ export class Room {
 	}
 
 	isRoomExist(roomName: string): boolean {
-		return this.io.sockets.adapter.rooms.get(roomName) ? true : false;
+		return !!this.io.sockets.adapter.rooms.get(roomName);
 	}
 
 	getAllRoom() {
@@ -116,6 +119,21 @@ export class Room {
 			arr = [username]
 		}
 		Room.gameResults.set(roomName, arr);
+	}
+
+	setSecondInGame(roomName: string, secondsInGame: number) {
+		const room = Room.roomsInGame.get(roomName);
+		Room.roomsInGame.set(roomName, {...room, secondsInGame});
+	}
+
+	getSecondsInGame(roomName: string) {
+		const room =  Room.roomsInGame.get(roomName);
+		if(room) {
+			return room.secondsInGame;
+		}
+		else {
+			return 0;
+		}
 	}
 
 	getResult(roomName: string) {

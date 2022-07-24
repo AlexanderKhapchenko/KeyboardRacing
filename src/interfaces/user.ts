@@ -4,4 +4,5 @@ export interface IUser {
 	activeRoom?: string;
 	ready: boolean;
 	progress: number;
+	time?: number;
 }

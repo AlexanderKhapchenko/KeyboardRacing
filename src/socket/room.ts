@@ -4,8 +4,11 @@ import { Users } from '../services/users';
 import { IUser } from '../interfaces/user';
 import { texts } from '../data';
 import { Room } from '../services/room';
+import {TCommentator} from "../component/commentator/commentator";
+import { CommentatorAction} from "../constants/enums/commentator-action";
+import {IResult} from "../interfaces/result";
 
-export default (io: Server, socket: Socket) => {
+export default (io: Server, socket: Socket, commentator: TCommentator) => {
 	const room = new Room(io);
 
 	const rooms = room.getAllRoom();
@@ -37,11 +40,11 @@ export default (io: Server, socket: Socket) => {
 		if (!room.isRoomInGame(roomName)) {
 			socket.broadcast.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers, isFullRoom});
 			socket.emit("UPDATE_ROOM_LIST", {roomName, numberOfUsers, isFullRoom});
+			messageByCommentator(commentator.say(CommentatorAction.HELLO, username), roomName);
 		}
 
 		socket.emit("JOIN_ROOM_DONE", {roomName, existUsers, newUser});
 		socket.in(roomName).emit("JOIN_ROOM_DONE", {roomName, newUser});
-		
 	}
 
 	socket.on("TRY_JOIN_ROOM", tryJoinRoom);
@@ -57,7 +60,15 @@ export default (io: Server, socket: Socket) => {
 			}
 
 			if('progress' in updateFields && activeRoom) {
-				updateFields.progress == 100 && room.addResult(name, activeRoom);
+				if(updateFields.progress == 100) {
+					room.addResult(name, activeRoom);
+					const secondsInGame = room.getSecondsInGame(activeRoom);
+					Users.update({name: user.name, updateFields: {
+						time: secondsInGame
+					}});
+					messageByCommentator(commentator.say(CommentatorAction.USER_ON_FINISH, {name: user.name, time: secondsInGame}), activeRoom);
+				}
+
 				checkGameOver({activeRoom});
 			}
 
@@ -83,7 +94,7 @@ export default (io: Server, socket: Socket) => {
 		if(usersInCurrentRoom.length > 0) {
 			usersInCurrentRoom
 			.filter(user => user.activeRoom == activeRoom)
-			.every(user => user.ready === true) 
+			.every(user => user.ready)
 			&& readyToGame({activeRoom});
 		}
 	}
@@ -91,6 +102,9 @@ export default (io: Server, socket: Socket) => {
 	const readyToGame = ({activeRoom}) => {
 		room.gameInProgress(activeRoom);
 		socket.broadcast.emit("DELETE_ROOM", {roomName: activeRoom});
+
+		const usersInCurrentRoom = Users.getAll().filter(user => user.activeRoom == activeRoom);
+		messageByCommentator(commentator.say(CommentatorAction.BEFORE_GAME, usersInCurrentRoom), activeRoom);
 
 		let sec = config.SECONDS_TIMER_BEFORE_START_GAME;
 		const interval = () => {
@@ -113,6 +127,7 @@ export default (io: Server, socket: Socket) => {
 	const startGame = ({activeRoom}) => {
 		room.startGame(activeRoom);
 		let sec = config.SECONDS_FOR_GAME;
+		let secForCommentator = 0;
 		const randomText = texts[Math.floor(Math.random() * texts.length)];
 
 		socket.to(activeRoom).emit("START_GAME", {text: randomText});
@@ -123,11 +138,21 @@ export default (io: Server, socket: Socket) => {
 		const interval = () => {
 			socket.to(activeRoom).emit("UPDATE_GAME_TIMER", {sec});
 			socket.emit("UPDATE_GAME_TIMER", {sec});
-			
+			room.setSecondInGame(activeRoom, secForCommentator);
+
+			if(secForCommentator % config.COMMENTATOR_SAY_ANYTHING_EVERY_SECONDS == 0) {
+				messageByCommentator(commentator.say(CommentatorAction.ANYTHING), activeRoom);
+			}
+
+			if(secForCommentator % config.COMMENTATOR_SAY_EVERY_SECONDS == 0) {
+				messageByCommentator(commentator.say(CommentatorAction.EVERY_30_SEC, {usersInRoom: usersInCurrentRoom, time: secForCommentator}), activeRoom);
+			}
+
 			if(usersInCurrentRoom.every(user => user.progress === 100)){
 				endGame({activeRoom});
 			}
 
+			secForCommentator++;
 			sec--;
 		}
 		interval();
@@ -143,11 +168,39 @@ export default (io: Server, socket: Socket) => {
 		room.stopTimerOnGameOver(timerId, activeRoom)
 	}
 
+
 	const endGame = ({activeRoom}) => {
-		const gameResults = room.getResult(activeRoom);
+		const resultsRaw = room.getResult(activeRoom);
 		room.gameOver(activeRoom);
-		socket.to(activeRoom).emit("SHOW_RESULTS", {gameResults});
-		socket.emit("SHOW_RESULTS", {gameResults});
+
+		const results: IResult[] = []
+
+		if (resultsRaw) {
+			resultsRaw.forEach(username => {
+				const user = Users.getOne({name: username});
+
+				Users.update({name: username, updateFields: {
+						ready: false,
+						activeRoom: undefined,
+						time: undefined
+					}});
+
+				if(user) {
+					results.push({
+						name: user.name,
+						time: user.time || config.SECONDS_FOR_GAME,
+					})
+				}
+			});
+
+			messageByCommentator(commentator.say(CommentatorAction.GAME_OVER, results), activeRoom);
+			socket.to(activeRoom).emit("GAME_OVER");
+			socket.emit("GAME_OVER");
+		}
+
+		//messageByCommentator(commentator.say(CommentatorAction.GAME_OVER, results), activeRoom);
+		// socket.to(activeRoom).emit("SHOW_RESULTS", {gameResults});
+		// socket.emit("SHOW_RESULTS", {gameResults});
 	}
 
 	const exitRoom = ({username}) => {
@@ -158,7 +211,8 @@ export default (io: Server, socket: Socket) => {
 		if (roomName) {
 			Users.update({name: username, updateFields: {
 				ready: false,
-				activeRoom: undefined
+				activeRoom: undefined,
+				time: undefined
 			}});
 
 			socket.to(roomName).emit("REMOVE_USER_ELEMENT", {username});
@@ -195,4 +249,16 @@ export default (io: Server, socket: Socket) => {
 			exitRoom({username: user.name});
 		}
 	});
+
+	socket.on("COMMENTATOR_SYMBOL_INFO", () => {
+		const user = Users.getOne({id: socket.id});
+		if (user) {
+			const message = commentator.say('symbol_30_to_finish', user.name);
+			messageByCommentator(message, user.activeRoom);
+		}
+	});
+
+	const messageByCommentator = (message, roomId) => {
+		io.to(roomId).emit("COMMENTATOR_SAY", message);
+	}
 }
