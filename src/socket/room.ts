@@ -187,7 +187,6 @@ export default (io: Server, socket: Socket, commentator: TCommentator) => {
 				if(user) {
 					Users.update({name: username, updateFields: {
 							ready: false,
-							activeRoom: undefined,
 							time: undefined,
 							totalRace: user.totalRace + 1
 						}});
