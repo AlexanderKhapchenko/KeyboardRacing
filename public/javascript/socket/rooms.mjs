@@ -14,6 +14,7 @@ import {showInputModal, showMessageModal} from "../views/modal.mjs"
 import { appendRoomElement, hideRoomElement, removeRoomElement, showRoomElement, updateNumberOfUsersInRoom } from "../views/room.mjs";
 import { appendUserElement, changeReadyStatus, removeUserElement, setProgress } from "../views/user.mjs";
 import {messageByCommentator} from "../views/commentator.mjs";
+import {Events} from "../constants/enum/events.mjs";
 
 export const rooms = (socket) => {
 	const username = sessionStorage.getItem('username');
@@ -29,7 +30,7 @@ export const rooms = (socket) => {
 		showInputModal({
 			title: 'Enter room name', 
 			onSubmit: () => {
-				socket.emit("CREATE_ROOM", {roomName, username});
+				socket.emit(Events.CREATE_ROOM, {roomName, username});
 			},
 			onChange: (input) => {
 				if(input.trim().length) {
@@ -43,7 +44,7 @@ export const rooms = (socket) => {
 		showRoomPage();
 		resetGamePage();
 		removeUserElement(username);
-		socket.emit("EXIT_ROOM", ({
+		socket.emit(Events.EXIT_ROOM, ({
 			username
 		}));
 	}
@@ -53,36 +54,36 @@ export const rooms = (socket) => {
 		ready = !ready;
 		readyBtn.innerText = ready ? readyBtnState.NOT_READY : readyBtnState.READY;
 		changeReadyStatus({username, ready});
-		socket.emit("UPDATE_USER", ({ready}));
+		socket.emit(Events.UPDATE_USER, ({ready}));
 	});
 
-	socket.on('USER_EXIST', (message) => {
+	socket.on(Events.USER_EXIST, (message) => {
 		const roomsPage = document.getElementById('rooms-page');
 		roomsPage.classList.add("display-none");
 		showMessageModal({message, onClose: () => {window.location.replace('/login')}});
 		sessionStorage.removeItem('username');
 	});
 
-	socket.on("REMOVE_USER_ELEMENT", ({username}) => {
+	socket.on(Events.REMOVE_USER_ELEMENT, ({username}) => {
 		removeUserElement(username);
 	});
 
-	socket.on('ROOM_EXISTS', (message) => {
+	socket.on(Events.ROOM_EXISTS, (message) => {
 		showMessageModal({message});
 		showRoomPage();
 	});
 
 	const joinToRoom = ({roomName, username}) => {
-		socket.emit("TRY_JOIN_ROOM", {roomName, username});
+		socket.emit(Events.TRY_JOIN_ROOM, {roomName, username});
 	}
 
-	socket.on('UPDATE_ROOMS', ({roomName, numberOfUsers}) => {
+	socket.on(Events.UPDATE_ROOMS, ({roomName, numberOfUsers}) => {
 		appendRoomElement({name: roomName, numberOfUsers, onJoin: () => {
 			joinToRoom({roomName, username});
 		}});
 	});
 
-	socket.on("UPDATE_ROOM_LIST", ({roomName, numberOfUsers, isFullRoom}) => {
+	socket.on(Events.UPDATE_ROOM_LIST, ({roomName, numberOfUsers, isFullRoom}) => {
 		updateNumberOfUsersInRoom({name: roomName, numberOfUsers});
 
 		if (isFullRoom) {
@@ -92,7 +93,7 @@ export const rooms = (socket) => {
 		}
 	});
 
-	socket.on("JOIN_ROOM_DONE", ({roomName, existUsers, newUser, ready}) => {
+	socket.on(Events.JOIN_ROOM_DONE, ({roomName, existUsers, newUser, ready}) => {
 		showGamePage();
 		changeRoomName(roomName);
 
@@ -111,17 +112,17 @@ export const rooms = (socket) => {
 		});
 	});
 
-	socket.on("UPDATE_USER_IN_ROOM", ({user}) => {
+	socket.on(Events.UPDATE_USER_IN_ROOM, ({user}) => {
 		changeReadyStatus({username: user.name, ready: user.ready});
 		setProgress({username: user.name, progress: user.progress});
 	});
 
-	socket.on("DELETE_ROOM", ({roomName}) => {
+	socket.on(Events.DELETE_ROOM, ({roomName}) => {
 		removeRoomElement(roomName);
 	});
 	
 
-	socket.on("GET_EXISTS_ROOM", ({rooms}) => {
+	socket.on(Events.GET_EXISTS_ROOM, ({rooms}) => {
 		rooms.forEach(room => {
 			appendRoomElement({
 				name: room.name,
@@ -133,11 +134,11 @@ export const rooms = (socket) => {
 		})
 	});
 
-	socket.on("READY_TO_GAME", readyToGame);
+	socket.on(Events.READY_TO_GAME, readyToGame);
 
-	socket.on("UPDATE_GAME_TIMER", updateGameTimer);
+	socket.on(Events.UPDATE_GAME_TIMER, updateGameTimer);
 
-	socket.on("START_GAME", ({text}) => {
+	socket.on(Events.START_GAME, ({text}) => {
 
 		const characters = createSpanElements(text);
 		changeTextContainer(characters);
@@ -152,10 +153,10 @@ export const rooms = (socket) => {
 				cursorCharacter.classList.add("done");
 				cursorCharacter = characters[++cursorIndex];
 				userProgress = cursorIndex / characters.length * 100;
-				socket.emit("UPDATE_USER", {progress: userProgress});
+				socket.emit(Events.UPDATE_USER, {progress: userProgress});
 
 				if(characters.length - cursorIndex === 30) {
-					socket.emit("COMMENTATOR_SYMBOL_INFO");
+					socket.emit(Events.COMMENTATOR_SYMBOL_INFO);
 				}
 			}
 
@@ -170,12 +171,12 @@ export const rooms = (socket) => {
 		globalKeydown = keydown;
 	});
 
-	socket.on("GAME_OVER", () => {
+	socket.on(Events.GAME_OVER, () => {
 		document.removeEventListener('keydown', globalKeydown);
 		showQuitButton();
 	});
 
-	socket.on("COMMENTATOR_SAY", messageByCommentator);
+	socket.on(Events.COMMENTATOR_SAY, messageByCommentator);
 
 }
 
