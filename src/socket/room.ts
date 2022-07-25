@@ -1,11 +1,11 @@
-import { Server, Socket} from 'socket.io';
+import {Server, Socket} from 'socket.io';
 import * as config from "./config";
-import { Users } from '../services/users';
-import { IUser } from '../interfaces/user';
-import { texts } from '../data';
-import { Room } from '../services/room';
-import {TCommentator} from "../component/commentator/commentator";
-import { CommentatorAction} from "../constants/enums/commentator-action";
+import {Users} from '../services/users';
+import {IUser} from '../interfaces/user';
+import {texts} from '../data';
+import {Room} from '../services/room';
+import {TCommentator} from "../component/commentator/commentator-factory";
+import {CommentatorAction} from "../constants/enums/commentator-action";
 import {IResult} from "../interfaces/result";
 
 export default (io: Server, socket: Socket, commentator: TCommentator) => {
@@ -179,13 +179,14 @@ export default (io: Server, socket: Socket, commentator: TCommentator) => {
 			resultsRaw.forEach(username => {
 				const user = Users.getOne({name: username});
 
-				Users.update({name: username, updateFields: {
-						ready: false,
-						activeRoom: undefined,
-						time: undefined
-					}});
-
 				if(user) {
+					Users.update({name: username, updateFields: {
+							ready: false,
+							activeRoom: undefined,
+							time: undefined,
+							totalRace: user.totalRace + 1
+						}});
+
 					results.push({
 						name: user.name,
 						time: user.time || config.SECONDS_FOR_GAME,
@@ -253,7 +254,7 @@ export default (io: Server, socket: Socket, commentator: TCommentator) => {
 	socket.on("COMMENTATOR_SYMBOL_INFO", () => {
 		const user = Users.getOne({id: socket.id});
 		if (user) {
-			const message = commentator.say('symbol_30_to_finish', user.name);
+			const message = commentator.say(CommentatorAction.SYMBOL_30_TO_FINISH, user.name);
 			messageByCommentator(message, user.activeRoom);
 		}
 	});

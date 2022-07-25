@@ -1,9 +1,8 @@
 import { Hello, TimeInfo, SymbolInfo, GameOver, Anything, Joke, Story, Fact } from './utils';
 import { CommentatorAction} from "../../constants/enums/commentator-action";
 
-// Factory pattern
-export class Commentator {
-    say(type, arg?: any) {
+export class CommentatorFactory {
+    say(type: CommentatorAction, arg?: any) {
         let comment;
         switch(type) {
             case CommentatorAction.HELLO:
@@ -35,4 +34,4 @@ export class Commentator {
     }
 }
 
-export type TCommentator = InstanceType<typeof Commentator>;
+export type TCommentator = InstanceType<typeof CommentatorFactory>;
