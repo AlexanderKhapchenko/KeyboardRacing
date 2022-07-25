@@ -153,6 +153,10 @@ export const rooms = (socket) => {
 				cursorCharacter = characters[++cursorIndex];
 				userProgress = cursorIndex / characters.length * 100;
 				socket.emit("UPDATE_USER", {progress: userProgress});
+
+				if(characters.length - cursorIndex === 30) {
+					socket.emit("COMMENTATOR_SYMBOL_INFO");
+				}
 			}
 
 			cursorCharacter && cursorCharacter.classList.add("cursor");
