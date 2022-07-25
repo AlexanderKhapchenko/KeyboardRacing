@@ -1,10 +1,10 @@
 import { RandomInt } from "./";
 
 export class NameChooser {
-    private readonly names = ['Саша', 'Паша', 'Влад', 'Лео', 'Арамис'];
+    private static readonly names = ['Саша', 'Паша', 'Влад', 'Лео', 'Арамис'];
 
-    getRand() {
-        const rand = new RandomInt().get(this.names.length);
+    static getRand() {
+        const rand = RandomInt.generate({max: this.names.length - 1});
         return this.names[rand];
     }
 }

@@ -1,7 +1,7 @@
 import {IUser} from "../../../interfaces/user";
 
 export class TimeInfo {
-    everyone({usersInRoom, time} : {usersInRoom: IUser[], time: number}) {
+    static generate({usersInRoom, time} : {usersInRoom: IUser[], time: number}) {
         usersInRoom.sort((a, b) => a.progress < b.progress ? -1 : 1);
         let result: string[] = [];
         result.push('Боряться за первенство в такой последовательности')
@@ -17,5 +17,3 @@ export class TimeInfo {
         return result.join('<br>');
     }
 }
-
-export type TTimeInfo = InstanceType<typeof TimeInfo>;

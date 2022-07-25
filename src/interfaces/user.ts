@@ -1,3 +1,5 @@
+import {ICar} from "../component/commentator/utils/car-interface";
+
 export interface IUser {
 	id: string;
 	name: string;
@@ -6,4 +8,5 @@ export interface IUser {
 	progress: number;
 	time?: number;
 	totalRace: number;
+	car: ICar
 }
