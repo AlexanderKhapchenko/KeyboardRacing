@@ -8,7 +8,7 @@ export default (socket: Socket) => {
 		socket.emit('USER_EXIST', `Username ${username} already used`);
 	}
 	else {
-		Users.create({name: username as string, id: socket.id, ready: false, progress: 0});
+		Users.create({name: username as string, id: socket.id, ready: false, progress: 0, totalRace: 0});
 	}
 
 	socket.on("disconnect", () => {

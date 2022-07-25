@@ -5,4 +5,5 @@ export interface IUser {
 	ready: boolean;
 	progress: number;
 	time?: number;
+	totalRace: number;
 }
