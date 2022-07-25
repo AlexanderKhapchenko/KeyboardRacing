@@ -10,7 +10,7 @@ import {
 	readyBtnState,
 	showQuitButton
 } from "../views/game.mjs";
-import {showInputModal, showMessageModal, showResultsModal} from "../views/modal.mjs"
+import {showInputModal, showMessageModal} from "../views/modal.mjs"
 import { appendRoomElement, hideRoomElement, removeRoomElement, showRoomElement, updateNumberOfUsersInRoom } from "../views/room.mjs";
 import { appendUserElement, changeReadyStatus, removeUserElement, setProgress } from "../views/user.mjs";
 import {messageByCommentator} from "../views/commentator.mjs";
@@ -49,7 +49,7 @@ export const rooms = (socket) => {
 	}
 
 	readyBtn && (readyBtn.onclick = () => {
-		let ready = readyBtn.innerText != readyBtnState.READY;
+		let ready = readyBtn.innerText !== readyBtnState.READY;
 		ready = !ready;
 		readyBtn.innerText = ready ? readyBtnState.NOT_READY : readyBtnState.READY;
 		changeReadyStatus({username, ready});
@@ -169,17 +169,6 @@ export const rooms = (socket) => {
 	socket.on("GAME_OVER", () => {
 		document.removeEventListener('keydown', globalKeydown);
 		showQuitButton();
-
-		// showResultsModal({usersSortedArray: gameResults, onClose: () => {
-		// 	resetGamePage();
-		// 	showRoomPage();
-		//
-		// 	removeUserElement(username);
-		//
-		// 	socket.emit("EXIT_ROOM", ({
-		// 		username
-		// 	}));
-		// }})
 	});
 
 	socket.on("COMMENTATOR_SAY", messageByCommentator);
